@@ -208,13 +208,17 @@ function createOrShowSettingsWindow() {
    通知
 ═══════════════════════════════ */
 
-let messageIndex = 0; // 轮询下标
+let messageIndex    = 0;     // 轮询下标
+let isTestReminder  = false; // 区分测试通知与真实提醒
 
-function showNotification() {
+function showNotification(isTest = false) {
+  isTestReminder = isTest;
+
   const msgs = settings.messages;
   messageIndex = messageIndex % msgs.length;
   currentReminderMessage = msgs[messageIndex];
-  messageIndex = (messageIndex + 1) % msgs.length;
+  // 测试通知不推进轮询下标，下次真实提醒从当前位置继续
+  if (!isTest) messageIndex = (messageIndex + 1) % msgs.length;
 
   // 若弹窗已在显示，直接置顶即可
   if (reminderWindow && !reminderWindow.isDestroyed()) {
@@ -227,16 +231,17 @@ function showNotification() {
   const winW = 340, winH = 170;
 
   reminderWindow = new BrowserWindow({
-    width:        winW,
-    height:       winH,
-    x:            width  - winW - 20,
-    y:            height - winH - 20,
-    frame:        false,
-    transparent:  true,
-    alwaysOnTop:  true,
-    resizable:    false,
-    skipTaskbar:  true,
-    title:        '休息一下',
+    width:           winW,
+    height:          winH,
+    x:               width  - winW - 20,
+    y:               height - winH - 20,
+    frame:           false,
+    // transparent 在部分 Windows 驱动下会导致窗口不渲染，改用纯色背景
+    backgroundColor: '#ffffff',
+    alwaysOnTop:     true,
+    resizable:       false,
+    skipTaskbar:     true,
+    title:           '休息一下',
     webPreferences: {
       preload:          path.join(__dirname, 'reminder-preload.js'),
       contextIsolation: true,
@@ -252,8 +257,9 @@ function showNotification() {
    定时提醒
 ═══════════════════════════════ */
 
-let reminderTimer   = null;
-let nextReminderTime = 0; // 下次提醒的时间戳（ms），供倒计时使用
+let reminderTimer    = null;
+let fallbackTimer    = null; // 弹窗未关闭时的兜底定时器
+let nextReminderTime = 0;    // 下次提醒的时间戳（ms），供倒计时使用
 
 // 判断当前时刻是否在工作时间内
 function isWorkTime() {
@@ -286,13 +292,21 @@ function scheduleNextReminder(msDelay) {
   nextReminderTime = Date.now() + delay;
 
   reminderTimer = setTimeout(() => {
-    if (isWorkTime()) showNotification();
-    // 通知弹出后，等用户点确认再重新计时（close-reminder-window 里处理）
-    // 若用户不在电脑前未关闭弹窗，此处兜底：60s 后自动调度下次
-    setTimeout(() => {
-      if (!reminderWindow || reminderWindow.isDestroyed()) return;
+    if (isWorkTime()) {
+      showNotification();
+      // 正常流程：用户点"我知道了" → close-reminder-window IPC → scheduleNextReminder
+      // 兜底：弹窗出现 60s 后若用户还未关闭，自动调度下次（防止计时链卡死）
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      fallbackTimer = setTimeout(() => {
+        fallbackTimer = null;
+        if (reminderWindow && !reminderWindow.isDestroyed()) {
+          scheduleNextReminder(settings.interval * 60_000);
+        }
+      }, 60_000);
+    } else {
+      // 不在工作时间，跳过提醒但必须继续调度，否则计时链断裂
       scheduleNextReminder(settings.interval * 60_000);
-    }, 60_000);
+    }
   }, delay);
 }
 
@@ -302,9 +316,11 @@ function scheduleNextReminder(msDelay) {
 
 ipcMain.handle('get-reminder-message', () => currentReminderMessage);
 ipcMain.on('close-reminder-window', () => {
+  // 用户关闭弹窗，取消兜底定时器
+  if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; }
   if (reminderWindow && !reminderWindow.isDestroyed()) reminderWindow.close();
-  // 从点击"我知道了"的时刻起，重新计时
-  scheduleNextReminder(settings.interval * 60_000);
+  // 测试通知不重置真实倒计时；真实提醒从点击时刻起重新计时
+  if (!isTestReminder) scheduleNextReminder(settings.interval * 60_000);
 });
 
 ipcMain.handle('get-next-reminder-time', () => nextReminderTime);
@@ -313,7 +329,7 @@ ipcMain.handle('get-settings',      ()           => settings);
 ipcMain.handle('save-settings',     (_, s)       => { saveSettings(s); scheduleNextReminder(); return true; });
 ipcMain.handle('get-auto-start',    ()           => app.getLoginItemSettings().openAtLogin);
 ipcMain.handle('set-auto-start',    (_, enabled) => { app.setLoginItemSettings({ openAtLogin: enabled }); return true; });
-ipcMain.handle('test-notification', ()           => { showNotification(); return true; });
+ipcMain.handle('test-notification', ()           => { showNotification(true); return true; });
 
 /* ═══════════════════════════════
    应用生命周期
