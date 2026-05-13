@@ -1,0 +1,13 @@
+{
+  "name": "drink-water-reminder",
+  "version": "1.0.0",
+  "description": "A lightweight Electron app that reminds you to drink water and stretch every hour during work hours.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "1.0"
+  }
+}
