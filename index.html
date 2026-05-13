@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'unsafe-inline'" />
+  <title>休息提醒 - 设置</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+      font-size: 14px;
+      background: #f0f4f8;
+      color: #333;
+      user-select: none;
+    }
+
+    /* ── 顶部标题栏 ── */
+    .header {
+      background: linear-gradient(135deg, #0078D4 0%, #005a9e 100%);
+      color: #fff;
+      padding: 20px 24px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header .icon { font-size: 28px; }
+    .header h1   { font-size: 18px; font-weight: 600; }
+    .header p    { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+
+    /* ── 倒计时状态栏 ── */
+    .countdown-bar {
+      background: #eef4fc;
+      border-bottom: 1px solid #cfe0f5;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .cd-label { font-size: 13px; color: #555; }
+    .cd-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0078D4;
+      letter-spacing: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── 主体内容 ── */
+    .content { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* 窗口放大时语句列表随高度增长 */
+    .message-list { max-height: calc(100vh - 460px); min-height: 80px; }
+
+    /* ── 分组卡片 ── */
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #0078D4;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 12px;
+    }
+
+    /* ── 表单控件 ── */
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .form-row:last-child { margin-bottom: 0; }
+
+    label { color: #555; white-space: nowrap; min-width: 80px; }
+
+    input[type="time"],
+    input[type="number"] {
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 14px;
+      font-family: inherit;
+      color: #333;
+      background: #fafafa;
+      transition: border-color .15s;
+      width: 145px;
+    }
+    input[type="number"] { width: 80px; }
+    input:focus { outline: none; border-color: #0078D4; background: #fff; }
+
+    .sep { color: #aaa; }
+
+    /* ── 提醒语句列表 ── */
+    .message-list {
+      list-style: none;
+      max-height: 160px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      border: 1px solid #e8edf2;
+      border-radius: 6px;
+    }
+    .message-item {
+      display: flex;
+      align-items: center;
+      padding: 7px 10px;
+      gap: 8px;
+      border-bottom: 1px solid #f0f4f8;
+      transition: background .1s;
+    }
+    .message-item:last-child { border-bottom: none; }
+    .message-item:hover      { background: #f5f8fc; }
+    .msg-text {
+      flex: 1;
+      font-size: 13px;
+      color: #333;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+    .btn-delete {
+      flex: none;
+      width: 22px; height: 22px;
+      padding: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: #aaa;
+      font-size: 16px;
+      line-height: 1;
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s, color .15s;
+    }
+    .btn-delete:hover  { background: #fde7e7; color: #c00; }
+    .btn-delete:active { transform: scale(.92); }
+
+    /* 添加新语句行 */
+    .msg-add-row {
+      display: flex;
+      gap: 8px;
+    }
+    .msg-add-row input[type="text"] {
+      flex: 1;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      color: #333;
+      background: #fafafa;
+      transition: border-color .15s;
+    }
+    .msg-add-row input[type="text"]:focus { outline: none; border-color: #0078D4; background: #fff; }
+    .btn-add {
+      flex: none;
+      padding: 6px 14px;
+      background: #0078D4;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity .15s;
+      white-space: nowrap;
+    }
+    .btn-add:hover  { opacity: .88; }
+    .btn-add:active { transform: scale(.97); }
+
+    /* ── 开机自启复选框 ── */
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .checkbox-row input[type="checkbox"] {
+      width: 16px; height: 16px;
+      accent-color: #0078D4;
+      cursor: pointer;
+    }
+    .checkbox-row span { color: #333; }
+
+    /* ── 底部按钮区 ── */
+    .actions {
+      display: flex;
+      gap: 10px;
+      padding: 0 24px 20px;
+    }
+    button {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 14px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+
+    .btn-secondary {
+      background: #e8edf2;
+      color: #444;
+    }
+    .btn-secondary:hover { background: #dce3ea; }
+
+    .btn-primary {
+      background: #0078D4;
+      color: #fff;
+    }
+    .btn-primary:hover { opacity: .9; }
+
+    /* ── 状态提示 ── */
+    #statusMsg {
+      text-align: center;
+      font-size: 13px;
+      color: #107c10;
+      padding: 0 24px 16px;
+      min-height: 22px;
+      transition: opacity .4s;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部标题 -->
+  <div class="header">
+    <span class="icon">💧</span>
+    <div>
+      <h1>休息一下</h1>
+      <p>保持专注，也别忘了照顾自己</p>
+    </div>
+  </div>
+
+  <!-- 倒计时状态栏 -->
+  <div class="countdown-bar">
+    <span class="cd-label">🕐 下次提醒还有</span>
+    <span id="countdown" class="cd-value">--:--:--</span>
+  </div>
+
+  <div class="content">
+
+    <!-- 工作时间 -->
+    <div class="card">
+      <div class="card-title">工作时间</div>
+      <div class="form-row">
+        <label>开始时间</label>
+        <input type="time" id="startTime" />
+        <span class="sep">至</span>
+        <input type="time" id="endTime" />
+      </div>
+    </div>
+
+    <!-- 提醒间隔 -->
+    <div class="card">
+      <div class="card-title">提醒间隔</div>
+      <div class="form-row">
+        <label>每隔</label>
+        <input type="number" id="interval" min="1" max="240" step="1" />
+        <span>分钟提醒一次</span>
+      </div>
+    </div>
+
+    <!-- 提醒语句池 -->
+    <div class="card">
+      <div class="card-title">提醒语句池（每次随机播报一条）</div>
+      <ul id="messageList" class="message-list"></ul>
+      <div class="msg-add-row">
+        <input type="text" id="newMessage" placeholder="输入新提醒语句，按 Enter 或点添加…" />
+        <button id="btnAdd" class="btn-add">+ 添加</button>
+      </div>
+    </div>
+
+    <!-- 开机自启 -->
+    <div class="card">
+      <div class="card-title">系统</div>
+      <label class="checkbox-row">
+        <input type="checkbox" id="autoStart" />
+        <span>开机自动启动（最小化到托盘）</span>
+      </label>
+    </div>
+
+  </div>
+
+  <!-- 操作按钮 -->
+  <div class="actions">
+    <button id="btnTest"  class="btn-secondary">🔔 测试通知</button>
+    <button id="btnSave"  class="btn-primary">✅ 保存设置</button>
+  </div>
+
+  <!-- 状态提示 -->
+  <div id="statusMsg"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

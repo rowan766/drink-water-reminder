@@ -1,13 +1,41 @@
 {
   "name": "drink-water-reminder",
   "version": "1.0.0",
-  "description": "A lightweight Electron app that reminds you to drink water and stretch every hour during work hours.",
+  "description": "每小时整点提醒喝水和活动的 Electron 桌面应用",
+  "author": "rowan766",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder"
   },
   "devDependencies": {
-    "electron": "1.0"
+    "electron": "^42.0.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.drinkwater.reminder",
+    "productName": "休息提醒",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js",
+      "reminder.html",
+      "reminder-preload.js",
+      "assets/**"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    }
   }
 }
