@@ -1,6 +1,6 @@
 {
   "name": "drink-water-reminder",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "每小时整点提醒喝水和活动的 Electron 桌面应用",
   "author": "rowan766",
   "main": "main.js",

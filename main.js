@@ -13,6 +13,9 @@ if (!gotSingleInstanceLock) app.quit();
    设置管理
 ═══════════════════════════════ */
 
+// 每次修改默认语句池时自增，触发已安装用户自动更新语句
+const SETTINGS_VERSION = 2;
+
 const DEFAULT_SETTINGS = {
   startTime: '08:30',
   endTime:   '18:30',
@@ -44,13 +47,21 @@ function getSettingsPath() {
 
 function loadSettings() {
   try {
-    const raw  = fs.readFileSync(getSettingsPath(), 'utf-8');
+    const raw   = fs.readFileSync(getSettingsPath(), 'utf-8');
     const saved = JSON.parse(raw);
-    // 兼容旧版单条 message 字段，迁移时使用完整默认语句池
+
+    // 兼容旧版单条 message 字段
     if (saved.message && !saved.messages) {
       saved.messages = DEFAULT_SETTINGS.messages;
       delete saved.message;
     }
+
+    // 版本检测：语句池有更新时重置为最新默认语句，其余设置保留
+    if (!saved.settingsVersion || saved.settingsVersion < SETTINGS_VERSION) {
+      saved.messages        = DEFAULT_SETTINGS.messages;
+      saved.settingsVersion = SETTINGS_VERSION;
+    }
+
     settings = { ...DEFAULT_SETTINGS, ...saved };
   } catch {
     settings = { ...DEFAULT_SETTINGS };
@@ -58,7 +69,7 @@ function loadSettings() {
 }
 
 function saveSettings(newSettings) {
-  settings = { ...settings, ...newSettings };
+  settings = { ...settings, ...newSettings, settingsVersion: SETTINGS_VERSION };
   fs.writeFileSync(getSettingsPath(), JSON.stringify(settings, null, 2), 'utf-8');
 }
 
